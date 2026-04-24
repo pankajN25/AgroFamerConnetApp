@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, SafeAreaView,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Image
+  KeyboardAvoidingView, ScrollView, Alert, ActivityIndicator, Image
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -299,8 +299,8 @@ export default function FarmerLoginScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: pageBg }}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           {/* ── Header ── */}
           <View className="flex-row items-center px-5 pt-4 pb-2">

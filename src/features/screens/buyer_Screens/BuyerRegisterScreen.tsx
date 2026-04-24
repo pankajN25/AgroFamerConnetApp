@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { 
   View, Text, TextInput, TouchableOpacity, Image,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator 
+  KeyboardAvoidingView, ScrollView, Alert, ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -196,8 +196,8 @@ export default function BuyerRegisterScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#F0F9FF]">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           {/* ── Header ── */}
           <View className="flex-row items-center mb-6 pt-2">

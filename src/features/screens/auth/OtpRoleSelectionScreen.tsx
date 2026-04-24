@@ -1,42 +1,45 @@
-// src/features/auth/screens/RoleSelectionScreen.tsx
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function RoleSelectionScreen() {
-  const navigation = useNavigation();
-  const [selectedRole, setSelectedRole] = useState<"farmer" | "buyer" | null>(null);
+export default function OtpRoleSelectionScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const phoneNumber = route.params?.phoneNumber || "";
+  const phoneVerified = Boolean(route.params?.phoneVerified);
+
+  const [selectedRole, setSelectedRole] = useState<"buyer" | "farmer" | null>(null);
 
   const handleContinue = () => {
+    if (selectedRole === "buyer") {
+      navigation.navigate("BuyerRegister" as never, {
+        prefillPhone: phoneNumber,
+        phoneVerified,
+      } as never);
+    }
     if (selectedRole === "farmer") {
-      navigation.navigate("FarmerLogin" as never);
-    } else if (selectedRole === "buyer") {
-      navigation.navigate("BuyerLogin" as never);
+      navigation.navigate("FarmerRegister" as never, {
+        prefillPhone: phoneNumber,
+        phoneVerified,
+      } as never);
     }
   };
 
-  const continueColor =
-    selectedRole === "buyer" ? "#3B82F6" : selectedRole === "farmer" ? "#16A34A" : undefined;
-
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAFC]">
-
-      {/* ── Branding Hero ── */}
       <View className="items-center px-6 pt-10 pb-6">
         <View className="w-20 h-20 rounded-full bg-green-100 items-center justify-center mb-5">
           <MaterialCommunityIcons name="leaf" size={40} color="#16A34A" />
         </View>
-        <Text className="text-3xl font-extrabold text-[#111827] mb-2">AgroConnect</Text>
+        <Text className="text-3xl font-extrabold text-[#111827] mb-2">Choose your role</Text>
         <Text className="text-center text-[#6B7280] leading-5 px-4">
-          Choose your role to get started
+          Complete registration to continue
         </Text>
       </View>
 
       <View className="flex-1 px-5">
-
-        {/* ── Farmer Card ── */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => setSelectedRole("farmer")}
@@ -64,29 +67,9 @@ export default function RoleSelectionScreen() {
                 List crops, manage inventory & connect with buyers
               </Text>
             </View>
-            <View
-              className="w-6 h-6 rounded-full border-2 items-center justify-center ml-2"
-              style={{ borderColor: selectedRole === "farmer" ? "#16A34A" : "#D1D5DB" }}
-            >
-              {selectedRole === "farmer" && (
-                <View className="w-3 h-3 rounded-full bg-[#16A34A]" />
-              )}
-            </View>
           </View>
-          {selectedRole === "farmer" && (
-            <View className="mt-4 pt-4 border-t border-green-200">
-              <View className="flex-row flex-wrap gap-2">
-                {["Sell Crops", "Track Orders", "Manage Profile", "Chat with Buyers"].map(tag => (
-                  <View key={tag} className="bg-green-100 rounded-full px-3 py-1">
-                    <Text className="text-[#16A34A] text-xs font-semibold">{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
         </TouchableOpacity>
 
-        {/* ── Buyer Card ── */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => setSelectedRole("buyer")}
@@ -110,62 +93,33 @@ export default function RoleSelectionScreen() {
             <View className="flex-1">
               <Text className="text-lg font-bold text-[#111827] mb-1">Buyer</Text>
               <Text className="text-[#6B7280] text-sm leading-5">
-                Browse fresh produce & order directly from farms
+                Browse crops and order directly from farms
               </Text>
             </View>
-            <View
-              className="w-6 h-6 rounded-full border-2 items-center justify-center ml-2"
-              style={{ borderColor: selectedRole === "buyer" ? "#3B82F6" : "#D1D5DB" }}
-            >
-              {selectedRole === "buyer" && (
-                <View className="w-3 h-3 rounded-full bg-[#3B82F6]" />
-              )}
-            </View>
           </View>
-          {selectedRole === "buyer" && (
-            <View className="mt-4 pt-4 border-t border-blue-200">
-              <View className="flex-row flex-wrap gap-2">
-                {["Browse Market", "Place Orders", "Track Delivery", "Compare Prices"].map(tag => (
-                  <View key={tag} className="bg-blue-100 rounded-full px-3 py-1">
-                    <Text className="text-[#3B82F6] text-xs font-semibold">{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
         </TouchableOpacity>
-
       </View>
 
-      {/* ── Continue Button ── */}
       <View className="px-5 pb-8 pt-5">
         <TouchableOpacity
           onPress={handleContinue}
           disabled={!selectedRole}
           className="flex-row justify-center items-center h-14 rounded-xl"
           style={{
-            backgroundColor: continueColor ?? "#D1D5DB",
-            shadowColor: continueColor ?? "transparent",
+            backgroundColor: selectedRole === "buyer" ? "#3B82F6" : selectedRole === "farmer" ? "#16A34A" : "#D1D5DB",
+            shadowColor: selectedRole ? "#0F172A" : "transparent",
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
+            shadowOpacity: selectedRole ? 0.25 : 0,
             shadowRadius: 8,
-            elevation: continueColor ? 5 : 0,
+            elevation: selectedRole ? 5 : 0,
           }}
         >
-          <Text
-            className="text-base font-bold mr-2"
-            style={{ color: selectedRole ? "white" : "#9CA3AF" }}
-          >
-            Continue as {selectedRole ? (selectedRole === "farmer" ? "Farmer" : "Buyer") : "..."}
+          <Text className="text-base font-bold mr-2" style={{ color: selectedRole ? "white" : "#9CA3AF" }}>
+            Continue
           </Text>
-          <MaterialCommunityIcons
-            name="arrow-right"
-            size={20}
-            color={selectedRole ? "white" : "#9CA3AF"}
-          />
+          <MaterialCommunityIcons name="arrow-right" size={20} color={selectedRole ? "white" : "#9CA3AF"} />
         </TouchableOpacity>
       </View>
-
     </SafeAreaView>
   );
 }

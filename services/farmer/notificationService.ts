@@ -1,8 +1,6 @@
 // src/features/farmer/api/notificationService.ts
 import axios from "axios";
-import { Platform } from "react-native";
-
-const BASE_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+import { BASE_URL } from "@/config/apiConfig";
 
 const api = axios.create({
   baseURL: BASE_URL,

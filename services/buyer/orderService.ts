@@ -1,9 +1,8 @@
 // src/features/buyer/api/orderService.ts
 import axios from "axios";
-import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const BASE_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+import { BASE_URL } from "@/config/apiConfig";
+import { razorpayService } from "@/services/payment/razorpayService";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -55,6 +54,79 @@ export const orderService = {
       return updatedOrders;
     } catch (error) {
       console.error("Save Local Buyer Order Error:", error);
+      throw error;
+    }
+  },
+
+  updateOrderStatus: async (orderId: number, status: string, description?: string) => {
+    try {
+      const response = await api.post("/UpdateOrderStatusWithHistory", {
+        id: orderId,
+        nvcharStatus: status,
+        nvcharDescription: description,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update Order Status API Error:", error);
+      throw error;
+    }
+  },
+
+  updateOrderAddress: async (orderId: number, address: string) => {
+    try {
+      const response = await api.post("/edittblOrder", {
+        id: orderId,
+        nvcharDeliveryAddress: address,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update Order Address API Error:", error);
+      throw error;
+    }
+  },
+
+  getPaymentByOrderId: async (orderId: number) => {
+    try {
+      const response = await api.post("/GettblTransactionByOrderId", { intOrderId: orderId });
+      return response.data;
+    } catch (error) {
+      console.error("Get Payment Status API Error:", error);
+      return null;
+    }
+  },
+
+  cancelOrder: async (orderId: number, reason?: string) => {
+    try {
+      return await razorpayService.cancelOrder(orderId, reason);
+    } catch (error) {
+      console.error("Cancel Order API Error:", error);
+      throw error;
+    }
+  },
+
+  placeCodOrder: async (orderData: any) => {
+    try {
+      const response = await api.post("/order/cod", { order: orderData });
+      return response.data;
+    } catch (error) {
+      console.error("Place COD Order API Error:", error);
+      throw error;
+    }
+  },
+
+  updateTransactionStatus: async (transaction: any, status: string) => {
+    try {
+      const response = await api.post("/edittblTransaction", {
+        id: transaction.id,
+        intOrderId: transaction.intOrderId,
+        nvcharTransactionNo: transaction.nvcharTransactionNo,
+        floatAmount: transaction.floatAmount,
+        nvcharPaymentMethod: transaction.nvcharPaymentMethod,
+        nvcharPaymentStatus: status,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Update Transaction API Error:", error);
       throw error;
     }
   },

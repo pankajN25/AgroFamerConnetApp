@@ -1,7 +1,7 @@
 import React from "react";
 import ChatThreadScreen from "@/src/features/screens/shared/ChatThreadScreen";
 
-export default function ChatDetailScreen(props: any) {
+export default function BuyerChatScreen(props: any) {
   const route = props.route ?? {};
   const mergedRoute = {
     ...route,

@@ -1,10 +1,9 @@
 import axios from "axios";
-import { Platform } from "react-native";
-
-const BASE_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+import { BASE_URL } from "@/config/apiConfig";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,7 +20,22 @@ const normalizeUrl = (value?: string | null) => {
   }
 
   if (/^https?:\/\//i.test(trimmedValue)) {
+    try {
+      const incoming = new URL(trimmedValue);
+      const apiOrigin = new URL(BASE_URL).origin;
+      if (["127.0.0.1", "localhost", "0.0.0.0", "::1"].includes(incoming.hostname)) {
+        return `${apiOrigin}${incoming.pathname}${incoming.search}${incoming.hash}`;
+      }
+    } catch (error) {
+      // fall through to return original value
+    }
+
     return trimmedValue;
+  }
+
+  // Bare filenames from tblCrop (e.g. "banana.jpg")
+  if (!trimmedValue.includes("/")) {
+    return `${BASE_URL}/uploads/crops/${trimmedValue}`;
   }
 
   if (trimmedValue.startsWith("/")) {
@@ -95,4 +109,3 @@ export const buyerCropService = {
 
   resolveCropImageUrl: (imageUrl?: string | null) => normalizeUrl(imageUrl),
 };
-

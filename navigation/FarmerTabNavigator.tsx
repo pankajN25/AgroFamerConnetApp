@@ -1,8 +1,9 @@
-// src/navigation/FarmerTabNavigator.tsx
+// navigation/FarmerTabNavigator.tsx
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform, Text, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FarmerDashboardScreen from '@/src/features/screens/FarmerDashboardScreen';
 import OrdersScreen from '@/src/features/screens/farmer/ordersPage/OrdersScreen';
 import FarmerMarketplaceScreen from '@/src/features/screens/farmer/marketplace/FarmerMarketplaceScreen';
@@ -10,89 +11,74 @@ import FarmerProfileScreen from '@/src/features/screens/farmer/profileScreen/Far
 
 const Tab = createBottomTabNavigator();
 
+const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
+  Dashboard: { active: 'home',             inactive: 'home-outline' },
+  Marketplace:{ active: 'storefront',      inactive: 'storefront-outline' },
+  Orders:     { active: 'receipt-text',    inactive: 'receipt-text-outline' },
+  Profile:    { active: 'account-circle',  inactive: 'account-circle-outline' },
+};
+
+const ACCENT  = '#16A34A';
+const INACTIVE = '#94A3B8';
+
 export default function FarmerTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const tabBarBottom = Math.max(10, insets.bottom + 6);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#00E600',
-        tabBarInactiveTintColor: '#94A3B8',
         tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: ACCENT,
+        tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: {
           position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 16,
-          height: 74,
-          paddingTop: 12,
-          paddingBottom: Platform.OS === 'ios' ? 16 : 12,
+          left: 14,
+          right: 14,
+          bottom: tabBarBottom,
+          height: (Platform.OS === 'ios' ? 76 : 68) + insets.bottom,
+          paddingTop: 0,
+          paddingBottom: Math.max(10, insets.bottom),
           backgroundColor: '#FFFFFF',
           borderTopWidth: 0,
-          borderRadius: 26,
-          elevation: 10,
-          shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: 10 },
+          borderRadius: 28,
+          elevation: 16,
+          shadowColor: '#064E3B',
+          shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.12,
-          shadowRadius: 18,
+          shadowRadius: 20,
         },
-        tabBarItemStyle: {
-          paddingVertical: 4,
-        },
+        tabBarItemStyle: { paddingTop: 10 },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginTop: 4,
-          marginBottom: 2,
-        },
-        tabBarIconStyle: {
           marginTop: 2,
         },
-        tabBarIcon: ({ color, focused }) => {
-          let iconName: any = 'help';
-          if (route.name === 'Dashboard') iconName = 'view-grid';
-          else if (route.name === 'Marketplace') iconName = 'storefront-outline';
-          else if (route.name === 'Orders') iconName = 'receipt';
-          else if (route.name === 'Profile') iconName = 'account-outline';
-          
+        tabBarIcon: ({ focused }) => {
+          const icons = TAB_ICONS[route.name] ?? { active: 'help', inactive: 'help' };
+          const iconName = focused ? icons.active : icons.inactive;
           return (
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                width: 44,
+                height: 30,
+                borderRadius: 15,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: focused ? 'rgba(0, 230, 0, 0.14)' : 'transparent',
+                backgroundColor: focused ? 'rgba(22,163,74,0.12)' : 'transparent',
               }}
             >
-              <MaterialCommunityIcons
-                name={iconName}
-                size={focused ? 24 : 22}
-                color={color}
-              />
+              <MaterialCommunityIcons name={iconName as any} size={focused ? 25 : 23} color={focused ? ACCENT : INACTIVE} />
             </View>
           );
         },
       })}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={FarmerDashboardScreen}
-        options={{ tabBarLabel: 'Home' }}
-      />
-      <Tab.Screen
-        name="Marketplace"
-        component={FarmerMarketplaceScreen}
-        options={{ tabBarLabel: 'Market' }}
-      />
-      <Tab.Screen
-        name="Orders"
-        component={OrdersScreen}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={FarmerProfileScreen}
-      />
+      <Tab.Screen name="Dashboard"   component={FarmerDashboardScreen}    options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Marketplace" component={FarmerMarketplaceScreen}  options={{ tabBarLabel: 'Market' }} />
+      <Tab.Screen name="Orders"      component={OrdersScreen} />
+      <Tab.Screen name="Profile"     component={FarmerProfileScreen} />
     </Tab.Navigator>
   );
 }

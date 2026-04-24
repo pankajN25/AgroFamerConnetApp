@@ -1,14 +1,53 @@
 import axios from "axios";
 import { Platform } from "react-native";
-
-const BASE_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+import { BASE_URL } from "@/config/apiConfig";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+const normalizeUrl = (value?: string | null) => {
+  if (!value) {
+    return "";
+  }
+
+  const trimmedValue = value.trim().replace(/\\/g, "/");
+  if (!trimmedValue || trimmedValue === "default_profile.jpg") {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue)) {
+    try {
+      const incoming = new URL(trimmedValue);
+      const apiOrigin = new URL(BASE_URL).origin;
+      if (["127.0.0.1", "localhost", "0.0.0.0", "::1"].includes(incoming.hostname)) {
+        return `${apiOrigin}${incoming.pathname}${incoming.search}${incoming.hash}`;
+      }
+    } catch {
+      // fall through
+    }
+
+    return trimmedValue;
+  }
+
+  if (!trimmedValue.includes("/")) {
+    return `${BASE_URL}/uploads/tblFarmerRegister/${trimmedValue}`;
+  }
+
+  if (trimmedValue.startsWith("/")) {
+    return `${BASE_URL}${trimmedValue}`;
+  }
+
+  if (trimmedValue.startsWith("uploads/")) {
+    return `${BASE_URL}/${trimmedValue}`;
+  }
+
+  return `${BASE_URL}/${trimmedValue}`;
+};
 
 export interface FarmerRegisterPayload {
   nvcharFullName: string;
@@ -33,6 +72,11 @@ export interface FarmerLoginPayload {
 export const authService = {
   registerFarmer: async (data: FarmerRegisterPayload) => {
     const response = await api.post("/savetblFarmerRegister", data);
+    return response.data;
+  },
+
+  editFarmer: async (data: Record<string, unknown>) => {
+    const response = await api.post("/edittblFarmerRegister", data);
     return response.data;
   },
 
@@ -61,9 +105,9 @@ export const authService = {
     return response.data;
   },
 
-  uploadProfilePicture: async (imageUri: string) => {
+  uploadProfilePicture: async (imageUri: string, farmerId: number | string) => {
     const formData = new FormData();
-    formData.append("AddGuest_id", "1");
+    formData.append("AddGuest_id", String(farmerId));
 
     if (Platform.OS === "web") {
       const res = await fetch(imageUri);
@@ -91,7 +135,7 @@ export const authService = {
   },
 
   extractProfileImageUrl: (response: any) => {
-    return (
+    const raw = (
       response?.url ||
       response?.imageUrl ||
       response?.nvcharProfilePhotoUrl ||
@@ -104,5 +148,8 @@ export const authService = {
       response?.data?.path ||
       ""
     );
+    return normalizeUrl(raw);
   },
+
+  resolveProfileImageUrl: (value?: string | null) => normalizeUrl(value),
 };

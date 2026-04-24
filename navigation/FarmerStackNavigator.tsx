@@ -14,6 +14,7 @@ import MessagesScreen from '@/src/features/screens/farmer/messagScreen/MessagesS
 import ChatDetailScreen from '@/src/features/screens/farmer/messagScreen/ChatDetailScreen';
 import WeatherScreen from '@/src/features/screens/farmer/WeatherScreen';
 import FarmerMarketplaceScreen from '@/src/features/screens/farmer/marketplace/FarmerMarketplaceScreen';
+import MarketplaceCropDetailScreen from '@/src/features/screens/farmer/marketplace/MarketplaceCropDetailScreen';
 import NotificationsScreen from '@/src/features/screens/farmer/notification/NotificationsScreen';
 import FarmerProfileScreen from '@/src/features/screens/farmer/profileScreen/FarmerProfileScreen';
 
@@ -39,6 +40,7 @@ export default function FarmerStackNavigator() {
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
       <Stack.Screen name="Weather" component={WeatherScreen} />
       <Stack.Screen name="Marketplace" component={FarmerMarketplaceScreen} />
+      <Stack.Screen name="MarketplaceCropDetail" component={MarketplaceCropDetailScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="ProfileScreen" component={FarmerProfileScreen} />
 

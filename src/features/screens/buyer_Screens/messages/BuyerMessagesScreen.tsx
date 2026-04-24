@@ -3,21 +3,21 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  SafeAreaView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parseStoredUser } from "@/src/utils/authSession";
 import { directMessageService } from "@/services/chat/directMessageService";
-import { farmerOrderService } from "@/services/farmer/farmerOrderService";
+import { buyerAuthService } from "@/services/buyer/buyerAuthService";
 
 const FALLBACK_AVATAR =
-  "https://ui-avatars.com/api/?name=Buyer&background=DBEAFE&color=1D4ED8&size=128";
+  "https://ui-avatars.com/api/?name=Farmer&background=E0ECFF&color=1D4ED8&size=128";
 
 const formatConversationTime = (value?: string | null) => {
   if (!value) return "";
@@ -46,77 +46,76 @@ const extractRecord = (response: any) => {
   return null;
 };
 
-export default function MessagesScreen() {
+export default function BuyerMessagesScreen() {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [conversations, setConversations] = useState<any[]>([]);
-  const [farmerId, setFarmerId] = useState<number | null>(null);
+  const [buyerId, setBuyerId] = useState<number | null>(null);
 
   const loadConversations = useCallback(async () => {
     try {
-      const raw = await AsyncStorage.getItem("@farmer_user");
+      const raw = await AsyncStorage.getItem("@buyer_user");
       const user = parseStoredUser(raw);
-      const farmerId = user?.id;
-      setFarmerId(farmerId ?? null);
-      if (!farmerId) {
+      const buyerId = user?.id;
+      setBuyerId(buyerId ?? null);
+      if (!buyerId) {
         setConversations([]);
         setIsLoading(false);
         return;
       }
 
-      const res = await directMessageService.getMessagesByUser(farmerId);
+      const res = await directMessageService.getMessagesByUser(buyerId);
       const list = extractMessageList(res);
 
       const grouped: Record<number, any> = {};
       list.forEach((msg: any) => {
         const otherId =
-          Number(msg.intSenderId) === Number(farmerId) ? Number(msg.intReceiverId) : Number(msg.intSenderId);
+          Number(msg.intSenderId) === Number(buyerId) ? Number(msg.intReceiverId) : Number(msg.intSenderId);
         const ts = msg.dtMessageDate ?? msg.dtDateOfCreation ?? "";
-
         if (!grouped[otherId] || new Date(ts).getTime() > new Date(grouped[otherId].timestamp).getTime()) {
           grouped[otherId] = {
-            buyerId: otherId,
+            farmerId: otherId,
             lastMessage: msg.nvcharMessage,
             lastSenderId: msg.intSenderId,
             timestamp: ts,
-            lastMessageId: msg.id,
           };
         }
       });
 
-      const buyerIds = Object.keys(grouped).map((k) => Number(k)).filter((id) => id > 0);
-      const buyers = await Promise.all(
-        buyerIds.map((id) => farmerOrderService.getBuyerById(id).catch(() => null))
+      const farmerIds = Object.keys(grouped).map((k) => Number(k)).filter((id) => id > 0);
+      const farmers = await Promise.all(
+        farmerIds.map((id) => buyerAuthService.getFarmerById(id).catch(() => null))
       );
 
-      const buyerMap: Record<number, any> = {};
-      buyers.forEach((res, idx) => {
+      const farmerMap: Record<number, any> = {};
+      farmers.forEach((res, idx) => {
         const record = extractRecord(res);
-        if (record) buyerMap[buyerIds[idx]] = record;
+        if (record) farmerMap[farmerIds[idx]] = record;
       });
 
       const convoList = Object.values(grouped)
         .map((item: any) => {
-          const buyer = buyerMap[item.buyerId];
-          const avatar = buyer?.nvcharProfilePhotoUrl?.startsWith("http")
-            ? buyer.nvcharProfilePhotoUrl
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                buyer?.nvcharFullName || `Buyer ${item.buyerId}`
-              )}&background=DBEAFE&color=1D4ED8&size=128`;
+          const farmer = farmerMap[item.farmerId];
+          const avatar =
+            farmer?.nvcharProfilePhotoUrl ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              farmer?.nvcharFullName || `Farmer ${item.farmerId}`
+            )}&background=E0ECFF&color=1D4ED8&size=128`;
           return {
             ...item,
-            buyerName: buyer?.nvcharFullName || `Buyer #${item.buyerId}`,
-            avatarUrl: avatar || FALLBACK_AVATAR,
+            buyerId,
+            farmerName: farmer?.nvcharFullName || `Farmer #${item.farmerId}`,
+            avatarUrl: buyerAuthService.resolveProfileImageUrl(avatar) || FALLBACK_AVATAR,
           };
         })
         .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       setConversations(convoList);
     } catch (e) {
-      console.log("Load conversations error", e);
+      console.log("Buyer load conversations error", e);
     } finally {
       setIsLoading(false);
     }
@@ -132,15 +131,15 @@ export default function MessagesScreen() {
   const filteredChats = useMemo(() => {
     if (!searchQuery) return conversations;
     const q = searchQuery.toLowerCase();
-    return conversations.filter((c) => String(c.buyerName).toLowerCase().includes(q));
+    return conversations.filter((c) => String(c.farmerName).toLowerCase().includes(q));
   }, [searchQuery, conversations]);
 
   const openChatDetail = (chat: any) => {
-    navigation.navigate("ChatDetail", {
-      counterpartyId: chat.buyerId,
-      counterpartyName: chat.buyerName,
+    navigation.navigate("BuyerChat", {
+      counterpartyId: chat.farmerId,
+      counterpartyName: chat.farmerName,
       counterpartyAvatar: chat.avatarUrl,
-      currentUserType: "farmer",
+      currentUserType: "buyer",
     });
   };
 
@@ -157,7 +156,7 @@ export default function MessagesScreen() {
       <View className="flex-1 ml-4 justify-center">
         <View className="flex-row justify-between items-center mb-1">
           <Text className="text-lg font-bold text-[#111827] flex-1" numberOfLines={1}>
-            {item.buyerName}
+            {item.farmerName}
           </Text>
           <Text className="text-xs text-[#9CA3AF]">{formatConversationTime(item.timestamp)}</Text>
         </View>
@@ -166,7 +165,7 @@ export default function MessagesScreen() {
           <View className="flex-1 flex-row items-center pr-4">
             <Text className="text-[#6B7280] text-sm" numberOfLines={1}>
               {Number(item.lastSenderId)
-                ? Number(item.lastSenderId) === Number(farmerId ?? item.farmerId)
+                ? Number(item.lastSenderId) === Number(buyerId ?? item.buyerId)
                   ? "You: "
                   : ""
                 : ""}
@@ -182,9 +181,6 @@ export default function MessagesScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-6 pt-4 pb-2 bg-white">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2 mr-2">
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
-          </TouchableOpacity>
           <Text className="text-2xl font-bold text-[#111827]">Messages</Text>
         </View>
       </View>
@@ -194,7 +190,7 @@ export default function MessagesScreen() {
           <MaterialCommunityIcons name="magnify" size={22} color="#9CA3AF" />
           <TextInput
             className="flex-1 ml-2 text-base text-[#111827]"
-            placeholder="Search buyers..."
+            placeholder="Search farmers..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -204,24 +200,24 @@ export default function MessagesScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#16A34A" />
+          <ActivityIndicator size="large" color="#1D4ED8" />
           <Text className="text-[#9CA3AF] text-sm mt-3 font-semibold">Loading messages...</Text>
         </View>
       ) : (
         <FlatList
           data={filteredChats}
-          keyExtractor={(item) => String(item.buyerId)}
+          keyExtractor={(item) => String(item.farmerId)}
           renderItem={renderChatRow}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
             <View className="items-center mt-20 px-8">
-              <View className="w-16 h-16 rounded-full bg-[#ECFDF5] items-center justify-center mb-4">
-                <MaterialCommunityIcons name="chat-outline" size={28} color="#16A34A" />
+              <View className="w-16 h-16 rounded-full bg-[#E0ECFF] items-center justify-center mb-4">
+                <MaterialCommunityIcons name="chat-outline" size={28} color="#1D4ED8" />
               </View>
               <Text className="text-[#111827] font-extrabold text-base mb-2">No messages yet</Text>
               <Text className="text-[#9CA3AF] text-center text-sm">
-                Buyer messages will appear here once they start a conversation.
+                Farmer replies will appear here once you start a conversation.
               </Text>
             </View>
           }

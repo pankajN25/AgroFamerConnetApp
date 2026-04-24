@@ -112,71 +112,102 @@ export default function NotificationsScreen() {
     const isUnread = item.intIsRead === 0;
 
     return (
-      <TouchableOpacity 
-        activeOpacity={0.7}
+      <TouchableOpacity
+        activeOpacity={0.8}
         onPress={() => handleNotificationPress(item)}
-        className={`flex-row p-4 mb-3 mx-6 bg-white rounded-2xl border ${isUnread ? 'border-green-200 shadow-sm' : 'border-gray-100'}`}
+        style={{
+          flexDirection: "row",
+          padding: 16,
+          marginBottom: 10,
+          marginHorizontal: 16,
+          backgroundColor: "#fff",
+          borderRadius: 20,
+          borderWidth: 1.5,
+          borderColor: isUnread ? `${config.color}33` : "#F3F4F6",
+          shadowColor: "#0F172A",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isUnread ? 0.07 : 0.04,
+          shadowRadius: 8,
+          elevation: isUnread ? 3 : 1,
+        }}
       >
-        {/* Dynamic Icon Box */}
-        <View className={`w-12 h-12 ${config.bgColor} rounded-xl items-center justify-center mr-4`}>
+        {/* Left: Icon */}
+        <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: `${config.color}18`, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
           <MaterialCommunityIcons name={config.icon as any} size={24} color={config.color} />
         </View>
 
-        {/* Text Content */}
-        <View className="flex-1 justify-center">
-          <View className="flex-row justify-between items-start mb-1">
-            <Text className={`flex-1 text-base mr-2 ${isUnread ? 'font-extrabold text-[#111827]' : 'font-bold text-[#374151]'}`}>
+        {/* Right: Content */}
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: isUnread ? "800" : "700", color: isUnread ? "#111827" : "#374151", marginRight: 8 }}>
               {item.nvcharTitle}
             </Text>
-            <Text className="text-[10px] text-[#9CA3AF] mt-1">{item.dtDateOfCreation}</Text>
+            <Text style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{item.dtDateOfCreation}</Text>
           </View>
-          <Text className={`text-sm leading-5 ${isUnread ? 'text-[#4B5563]' : 'text-[#9CA3AF]'}`}>
+          <Text style={{ fontSize: 13, lineHeight: 18, color: isUnread ? "#4B5563" : "#9CA3AF" }}>
             {item.nvcharMessage}
           </Text>
         </View>
+
+        {/* Unread dot */}
+        {isUnread && (
+          <View style={{ position: "absolute", top: 14, right: 14, width: 8, height: 8, borderRadius: 4, backgroundColor: config.color }} />
+        )}
       </TouchableOpacity>
     );
   };
 
+  const unreadCount = notifications.filter(n => n.intIsRead === 0).length;
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      
-      {/* ---------------- HEADER ---------------- */}
-      <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+
+      {/* ── Header ── */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ width: 42, height: 42, backgroundColor: "#fff", borderRadius: 21, alignItems: "center", justifyContent: "center", elevation: 2, shadowColor: "#0F172A", shadowOpacity: 0.07, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#111827" />
         </TouchableOpacity>
-        <Text className="text-xl font-extrabold text-[#111827]">Notifications</Text>
-        <TouchableOpacity className="p-2 -mr-2">
-          <MaterialCommunityIcons name="dots-vertical" size={24} color="#111827" />
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 22, fontWeight: "900", color: "#111827" }}>Notifications</Text>
+          {unreadCount > 0 && (
+            <Text style={{ fontSize: 11, color: "#16A34A", fontWeight: "700" }}>{unreadCount} unread</Text>
+          )}
+        </View>
+        <TouchableOpacity style={{ width: 42, height: 42, backgroundColor: "#fff", borderRadius: 21, alignItems: "center", justifyContent: "center", elevation: 2, shadowColor: "#0F172A", shadowOpacity: 0.07, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}>
+          <MaterialCommunityIcons name="check-all" size={20} color="#16A34A" />
         </TouchableOpacity>
       </View>
 
-      {/* ---------------- CUSTOM TABS ---------------- */}
-      <View className="flex-row px-6 border-b border-gray-100 mb-4">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab;
+      {/* ── Pill Tabs ── */}
+      <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 14, gap: 8 }}>
+        {tabs.map(tab => {
+          const active = tab === activeTab;
           return (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
-              className="mr-6 py-3 relative"
+              style={{
+                paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20,
+                backgroundColor: active ? "#16A34A" : "#fff",
+                borderWidth: active ? 0 : 1, borderColor: "#E5E7EB",
+                elevation: active ? 3 : 0,
+                shadowColor: active ? "#16A34A" : "transparent",
+                shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
+              }}
             >
-              <Text className={`font-bold ${isActive ? 'text-[#10B981]' : 'text-[#9CA3AF]'}`}>
-                {tab}
-              </Text>
-              {isActive && (
-                <View className="absolute bottom-0 left-0 right-0 h-1 bg-[#10B981] rounded-t-full" />
-              )}
+              <Text style={{ fontWeight: "700", fontSize: 12, color: active ? "#fff" : "#6B7280" }}>{tab}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* ---------------- NOTIFICATION LIST ---------------- */}
+      {/* ── Notification List ── */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#10B981" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color="#16A34A" />
         </View>
       ) : (
         <FlatList
@@ -186,10 +217,12 @@ export default function NotificationsScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View className="items-center justify-center mt-20 px-6">
-              <MaterialCommunityIcons name="bell-sleep-outline" size={64} color="#D1D5DB" />
-              <Text className="text-xl font-bold text-[#374151] mt-4">No notifications yet</Text>
-              <Text className="text-center text-[#9CA3AF] mt-2">
+            <View style={{ alignItems: "center", marginTop: 80, paddingHorizontal: 32 }}>
+              <View style={{ width: 80, height: 80, backgroundColor: "#F3F4F6", borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <MaterialCommunityIcons name="bell-sleep-outline" size={40} color="#D1D5DB" />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: "#374151", marginBottom: 8 }}>No notifications yet</Text>
+              <Text style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, lineHeight: 20 }}>
                 When you get new orders or system alerts, they will appear here.
               </Text>
             </View>

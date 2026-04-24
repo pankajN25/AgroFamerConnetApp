@@ -1,10 +1,10 @@
 import axios from "axios";
 import { Platform } from "react-native";
-
-const BASE_URL = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+import { BASE_URL } from "@/config/apiConfig";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,7 +21,22 @@ const normalizeUrl = (value?: string | null) => {
   }
 
   if (/^https?:\/\//i.test(trimmedValue)) {
+    try {
+      const incoming = new URL(trimmedValue);
+      const apiOrigin = new URL(BASE_URL).origin;
+      if (["127.0.0.1", "localhost", "0.0.0.0", "::1"].includes(incoming.hostname)) {
+        return `${apiOrigin}${incoming.pathname}${incoming.search}${incoming.hash}`;
+      }
+    } catch (error) {
+      // fall through to return original value
+    }
+
     return trimmedValue;
+  }
+
+  // Bare filenames from tblCrop (e.g. "banana.jpg")
+  if (!trimmedValue.includes("/")) {
+    return `${BASE_URL}/uploads/crops/${trimmedValue}`;
   }
 
   if (trimmedValue.startsWith("/")) {
@@ -37,6 +52,39 @@ const normalizeUrl = (value?: string | null) => {
 
 const extractData = (response: any) => response?.data ?? response;
 
+const extractList = (response: any) => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  if (Array.isArray(response?.data?.data)) {
+    return response.data.data;
+  }
+
+  if (Array.isArray(response?.data?.rows)) {
+    return response.data.rows;
+  }
+
+  if (response?.status === "success" && Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  return [];
+};
+
+const pickString = (...values: any[]) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+  return null;
+};
+
 export interface AddCropPayload {
   intFarmerId: number;
   nvcharCropName: string;
@@ -46,6 +94,8 @@ export interface AddCropPayload {
   dtHarvestDate: string;
   nvcharDescription: string;
   nvcharLocation: string;
+  floatLatitude?: number | null;
+  floatLongitude?: number | null;
   intQualityGradeId: number;
   ynOrganic: boolean;
   nvcharCropImageUrl: string;
@@ -74,7 +124,8 @@ export const cropService = {
 
   uploadCropImage: async (imageUri: string, cropId: number) => {
     const formData = new FormData();
-    formData.append("crop_id", String(cropId));
+    // ✅ Correct field name from API docs: intCropId (not crop_id)
+    formData.append("intCropId", String(cropId));
 
     if (Platform.OS === "web") {
       const res = await fetch(imageUri);
@@ -88,7 +139,8 @@ export const cropService = {
       );
     }
 
-    const response = await api.post("/uploadCropImage", formData, {
+    // ✅ Correct endpoint from API docs: /uploadtblCropImageWithMeta (not /uploadCropImage)
+    const response = await api.post("/uploadtblCropImageWithMeta", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -107,11 +159,25 @@ export const cropService = {
     }
   },
 
+  getCropCategories: async () => {
+    try {
+      const response = await api.get("/GetmstCropCategory");
+      return response.data;
+    } catch (error) {
+      console.error("Get Crop Categories API Error:", error);
+      throw error;
+    }
+  },
+
   getCropImages: async () => {
     try {
       const response = await api.get("/GettblCropImages");
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        // Endpoint missing on this backend; treat as empty list.
+        return { status: "not found", data: [] };
+      }
       console.error("Get Crop Images API Error:", error);
       throw error;
     }
@@ -179,17 +245,31 @@ export const cropService = {
   },
 
   extractCropImages: (response: any) => {
-    const data = extractData(response);
+    return extractList(response);
+  },
 
-    if (Array.isArray(data)) {
-      return data;
-    }
+  extractCropCategories: (response: any) => {
+    return extractList(response);
+  },
 
-    if (Array.isArray(data?.data)) {
-      return data.data;
-    }
+  extractImageUrl: (record: any) => {
+    const raw = pickString(
+      record?.nvcharImageUrl,
+      record?.nvcharImageURL,
+      record?.imageUrl,
+      record?.imageURL,
+      record?.nvcharCropImageUrl,
+      record?.nvcharCropImageURL,
+      record?.cropImageUrl,
+      record?.crop_image_url,
+      record?.url,
+      record?.fileUrl,
+      record?.path,
+      record?.file_path,
+      record?.image_path
+    );
 
-    return [];
+    return normalizeUrl(raw);
   },
 
   resolveCropImageUrl: (imageUrl?: string | null) => normalizeUrl(imageUrl),

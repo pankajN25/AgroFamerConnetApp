@@ -28,9 +28,11 @@ export default function CropDetailsScreen() {
   
   // Extract the crop data passed from the MyCropsScreen
   const { crop } = route.params as { crop: any };
-  const cropImageUrl = cropService.resolveCropImageUrl(
-    crop?.nvcharCropImageUrl || crop?.nvcharImageUrl || crop?.imageUrl
-  );
+  const cropImageUrl =
+    crop?._resolvedImageUrl ||
+    cropService.resolveCropImageUrl(
+      crop?.nvcharCropImageUrl || crop?.nvcharImageUrl || crop?.imageUrl
+    );
 
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB]">
@@ -126,7 +128,18 @@ export default function CropDetailsScreen() {
           </View>
 
           {/* Edit Button */}
-          <TouchableOpacity className="bg-white border-2 border-green-100 flex-row justify-center items-center h-14 rounded-xl shadow-sm mb-4">
+          <TouchableOpacity
+            className="bg-white border-2 border-green-100 flex-row justify-center items-center h-14 rounded-xl shadow-sm mb-4"
+            onPress={() =>
+              navigation.navigate("AddCrop", {
+                mode: "edit",
+                crop: {
+                  ...crop,
+                  _resolvedImageUrl: cropImageUrl,
+                },
+              })
+            }
+          >
             <MaterialCommunityIcons name="pencil" size={20} color="#10B981" />
             <Text className="text-[#10B981] text-lg font-bold ml-2">Edit Crop Details</Text>
           </TouchableOpacity>

@@ -20,6 +20,11 @@ const normalizeUrl = (value?: string | null) => {
     return null;
   }
 
+  // Local device file path — cannot be served from backend, skip it
+  if (/^file:\/\//i.test(trimmedValue) || /^\/data\//i.test(trimmedValue)) {
+    return null;
+  }
+
   if (/^https?:\/\//i.test(trimmedValue)) {
     try {
       const incoming = new URL(trimmedValue);
@@ -155,6 +160,16 @@ export const cropService = {
       return response.data;
     } catch (error) {
       console.error("Get Crops API Error:", error);
+      throw error;
+    }
+  },
+
+  getCropsByFarmerId: async (farmerId: number) => {
+    try {
+      const response = await api.post("/GettblCropByFarmerId", { intFarmerId: farmerId });
+      return response.data;
+    } catch (error) {
+      console.error("Get Crops By Farmer API Error:", error);
       throw error;
     }
   },

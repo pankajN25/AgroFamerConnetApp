@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parseStoredUser } from "@/src/utils/authSession";
-import { directMessageService } from "@/services/chat/directMessageService";
+import { directMessageService, BUYER_ID_OFFSET } from "@/services/chat/directMessageService";
 import { buyerAuthService } from "@/services/buyer/buyerAuthService";
 
 const FALLBACK_AVATAR =
@@ -67,17 +67,24 @@ export default function BuyerMessagesScreen() {
         return;
       }
 
-      const res = await directMessageService.getMessagesByUser(buyerId);
+      // Buyer's effective ID in the message store has BUYER_ID_OFFSET applied.
+      const myOffsetId = buyerId + BUYER_ID_OFFSET;
+      const res = await directMessageService.getMessagesByUser(buyerId, "buyer");
       const list = extractMessageList(res);
 
+      // Only include messages where this buyer's offset ID is sender or receiver.
+      // Counterparty is always a farmer (raw ID < BUYER_ID_OFFSET).
       const grouped: Record<number, any> = {};
       list.forEach((msg: any) => {
-        const otherId =
-          Number(msg.intSenderId) === Number(buyerId) ? Number(msg.intReceiverId) : Number(msg.intSenderId);
+        const senderRaw = Number(msg.intSenderId);
+        const receiverRaw = Number(msg.intReceiverId);
+        if (senderRaw !== myOffsetId && receiverRaw !== myOffsetId) return;
+        const farmerId = senderRaw === myOffsetId ? receiverRaw : senderRaw;
+        if (farmerId <= 0 || farmerId >= BUYER_ID_OFFSET) return;
         const ts = msg.dtMessageDate ?? msg.dtDateOfCreation ?? "";
-        if (!grouped[otherId] || new Date(ts).getTime() > new Date(grouped[otherId].timestamp).getTime()) {
-          grouped[otherId] = {
-            farmerId: otherId,
+        if (!grouped[farmerId] || new Date(ts).getTime() > new Date(grouped[farmerId].timestamp).getTime()) {
+          grouped[farmerId] = {
+            farmerId,
             lastMessage: msg.nvcharMessage,
             lastSenderId: msg.intSenderId,
             timestamp: ts,
@@ -140,6 +147,7 @@ export default function BuyerMessagesScreen() {
       counterpartyName: chat.farmerName,
       counterpartyAvatar: chat.avatarUrl,
       currentUserType: "buyer",
+      counterpartyType: "farmer",
     });
   };
 
@@ -164,11 +172,7 @@ export default function BuyerMessagesScreen() {
         <View className="flex-row justify-between items-center">
           <View className="flex-1 flex-row items-center pr-4">
             <Text className="text-[#6B7280] text-sm" numberOfLines={1}>
-              {Number(item.lastSenderId)
-                ? Number(item.lastSenderId) === Number(buyerId ?? item.buyerId)
-                  ? "You: "
-                  : ""
-                : ""}
+              {Number(item.lastSenderId) === (buyerId ? buyerId + BUYER_ID_OFFSET : 0) ? "You: " : ""}
               {item.lastMessage || "Start a conversation"}
             </Text>
           </View>

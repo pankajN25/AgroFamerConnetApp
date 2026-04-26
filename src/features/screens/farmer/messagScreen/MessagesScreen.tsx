@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parseStoredUser } from "@/src/utils/authSession";
-import { directMessageService } from "@/services/chat/directMessageService";
+import { directMessageService, BUYER_ID_OFFSET } from "@/services/chat/directMessageService";
 import { farmerOrderService } from "@/services/farmer/farmerOrderService";
 
 const FALLBACK_AVATAR =
@@ -67,18 +67,29 @@ export default function MessagesScreen() {
         return;
       }
 
-      const res = await directMessageService.getMessagesByUser(farmerId);
+      const res = await directMessageService.getMessagesByUser(farmerId, "farmer");
       const list = extractMessageList(res);
 
+      // Buyer IDs in messages are stored with BUYER_ID_OFFSET applied.
+      // Farmer IDs are stored as-is (< BUYER_ID_OFFSET).
+      // Only show conversations where the counterparty is a buyer (> BUYER_ID_OFFSET).
       const grouped: Record<number, any> = {};
       list.forEach((msg: any) => {
-        const otherId =
-          Number(msg.intSenderId) === Number(farmerId) ? Number(msg.intReceiverId) : Number(msg.intSenderId);
+        const senderRaw = Number(msg.intSenderId);
+        const receiverRaw = Number(msg.intReceiverId);
+        const counterpartyOffsetId =
+          senderRaw === Number(farmerId) ? receiverRaw : senderRaw;
+
+        // Skip if counterparty is not a buyer (no offset applied means it's a farmer)
+        if (counterpartyOffsetId <= BUYER_ID_OFFSET) return;
+
+        const realBuyerId = counterpartyOffsetId - BUYER_ID_OFFSET;
         const ts = msg.dtMessageDate ?? msg.dtDateOfCreation ?? "";
 
-        if (!grouped[otherId] || new Date(ts).getTime() > new Date(grouped[otherId].timestamp).getTime()) {
-          grouped[otherId] = {
-            buyerId: otherId,
+        if (!grouped[realBuyerId] || new Date(ts).getTime() > new Date(grouped[realBuyerId].timestamp).getTime()) {
+          grouped[realBuyerId] = {
+            buyerId: realBuyerId,
+            counterpartyOffsetId,
             lastMessage: msg.nvcharMessage,
             lastSenderId: msg.intSenderId,
             timestamp: ts,
@@ -137,10 +148,12 @@ export default function MessagesScreen() {
 
   const openChatDetail = (chat: any) => {
     navigation.navigate("ChatDetail", {
+      // Pass the real buyer ID; ChatThreadScreen applies the offset when needed.
       counterpartyId: chat.buyerId,
       counterpartyName: chat.buyerName,
       counterpartyAvatar: chat.avatarUrl,
       currentUserType: "farmer",
+      counterpartyType: "buyer",
     });
   };
 
@@ -165,11 +178,7 @@ export default function MessagesScreen() {
         <View className="flex-row justify-between items-center">
           <View className="flex-1 flex-row items-center pr-4">
             <Text className="text-[#6B7280] text-sm" numberOfLines={1}>
-              {Number(item.lastSenderId)
-                ? Number(item.lastSenderId) === Number(farmerId ?? item.farmerId)
-                  ? "You: "
-                  : ""
-                : ""}
+              {Number(item.lastSenderId) === Number(farmerId) ? "You: " : ""}
               {item.lastMessage || "Start a conversation"}
             </Text>
           </View>

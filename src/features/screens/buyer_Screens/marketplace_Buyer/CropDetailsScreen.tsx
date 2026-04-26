@@ -479,6 +479,7 @@ export default function CropDetailsScreen() {
                   counterpartyName: farmerData?.nvcharFullName || `Farmer #${crop?.intFarmerId}`,
                   counterpartyAvatar: farmerAvatar,
                   currentUserType: "buyer",
+                  counterpartyType: "farmer",
                 })
               }
               disabled={!crop?.intFarmerId}

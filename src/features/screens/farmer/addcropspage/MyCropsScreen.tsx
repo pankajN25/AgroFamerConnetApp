@@ -26,10 +26,45 @@ export default function MyCropsScreen() {
   const [activeTab, setActiveTab] = useState("All Crops");
   const tabs = ["All Crops", "ACTIVE", "SOLD", "PENDING"];
 
+  const getPreferredImageUrlFromRecords = (records: any[]): string | null => {
+    if (!Array.isArray(records) || records.length === 0) {
+      return null;
+    }
+
+    const sortedRecords = [...records].sort((a, b) => {
+      const primaryDiff = Number(Boolean(b?.ynPrimary)) - Number(Boolean(a?.ynPrimary));
+      if (primaryDiff !== 0) {
+        return primaryDiff;
+      }
+
+      const timeA = Date.parse(a?.dtCreatedDatetime ?? a?.dtCreatedAt ?? "");
+      const timeB = Date.parse(b?.dtCreatedDatetime ?? b?.dtCreatedAt ?? "");
+      const safeTimeA = Number.isFinite(timeA) ? timeA : 0;
+      const safeTimeB = Number.isFinite(timeB) ? timeB : 0;
+      if (safeTimeA !== safeTimeB) {
+        return safeTimeB - safeTimeA;
+      }
+
+      return Number(b?.id ?? 0) - Number(a?.id ?? 0);
+    });
+
+    for (const record of sortedRecords) {
+      const resolved = cropService.extractImageUrl(record);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    return null;
+  };
+
   const getCropImageUrl = (crop: any): string | null => {
+    const fromCropRecord = cropService.extractImageUrl(crop);
+    if (fromCropRecord) return fromCropRecord;
+
     const fromMap = cropImagesByCropId[String(crop?.id)];
     if (fromMap) return fromMap;
-    return cropService.extractImageUrl(crop);
+    return null;
   };
 
   useEffect(() => {
@@ -78,51 +113,49 @@ export default function MyCropsScreen() {
         return;
       }
 
-      // 2. Fetch all crops + bulk images in parallel
+      // 2. Fetch this farmer's crops directly from backend + bulk images in parallel
       const [response, cropImagesResponse] = await Promise.all([
-        cropService.getCrops(),
+        cropService.getCropsByFarmerId(farmerId),
         cropService.getCropImages().catch(() => null),
       ]);
 
       const cropImages = cropService.extractCropImages(cropImagesResponse);
-      const allCrops = extractCropList(response);
+      const myCrops = extractCropList(response);
 
-      if (allCrops.length) {
-        // 3. Filter to only this farmer's crops
-        const myCrops = allCrops.filter((crop: any) => {
-          const cropFarmerId = normalizeFarmerId(
-            crop?.intFarmerId ?? crop?.farmerId ?? crop?.int_farmer_id ?? crop?.intFarmerID
-          );
-          return cropFarmerId === farmerId;
-        });
-
-        // 4. Build image map from bulk response
-        const imageMap: Record<string, string | null> = {};
-        for (const image of cropImages) {
-          const cropId = image?.intCropId ?? image?.crop_id;
-          if (!cropId) continue;
-          const key = String(cropId);
-          if (!imageMap[key]) {
-            const resolved = cropService.extractImageUrl(image);
-            if (resolved) imageMap[key] = resolved;
-          }
-        }
-
-        // 5. Show crops immediately — spinner stops here
-        setCropImagesByCropId(imageMap);
-        setCrops(myCrops);
-        applyFilters(myCrops, activeTab, searchQuery);
-
-        // 6. Mark crops that still need per-crop image fetch
-        cropsToEnrich = myCrops.filter(c => !imageMap[String(c.id)]);
-      } else {
-        setCrops([]);
-        setFilteredCrops([]);
+      // 3. Build image map from bulk response
+      const imageMap: Record<string, string | null> = {};
+      const cropImagesById: Record<string, any[]> = {};
+      for (const image of cropImages) {
+        const cropId = image?.intCropId ?? image?.crop_id;
+        if (!cropId) continue;
+        const key = String(cropId);
+        cropImagesById[key] = [...(cropImagesById[key] ?? []), image];
       }
+
+      for (const [key, records] of Object.entries(cropImagesById)) {
+        const resolved = getPreferredImageUrlFromRecords(records);
+        if (resolved) imageMap[key] = resolved;
+      }
+
+      // 4. Crop record image is authoritative for edited crops, so let it override older image rows
+      for (const crop of myCrops) {
+        const key = String(crop.id);
+        const resolved = cropService.extractImageUrl(crop);
+        if (resolved) imageMap[key] = resolved;
+      }
+
+      // 5. Show crops immediately — spinner stops here
+      setCropImagesByCropId(imageMap);
+      setCrops(myCrops);
+      applyFilters(myCrops, activeTab, searchQuery);
+
+      // 6. Mark crops that still need per-crop image fetch
+      cropsToEnrich = myCrops.filter(c => !imageMap[String(c.id)]);
     } catch (error) {
       console.log("Error fetching crops:", error);
+      setCrops([]);
+      setFilteredCrops([]);
     } finally {
-      // ✅ Stop spinner NOW — crops already visible above
       setIsLoading(false);
     }
 
@@ -133,7 +166,7 @@ export default function MyCropsScreen() {
         try {
           const res = await cropService.getCropImagesByCropId(crop.id);
           const imgs = cropService.extractCropImages(res);
-          const url = cropService.extractImageUrl(imgs[0]);
+          const url = getPreferredImageUrlFromRecords(imgs);
           if (url) updates[String(crop.id)] = url;
         } catch {}
       }

@@ -16,7 +16,7 @@ import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parseStoredUser } from "@/src/utils/authSession";
-import { directMessageService } from "@/services/chat/directMessageService";
+import { directMessageService, BUYER_ID_OFFSET } from "@/services/chat/directMessageService";
 
 const FALLBACK_AVATAR =
   "https://ui-avatars.com/api/?name=User&background=E2E8F0&color=475569&size=128";
@@ -48,6 +48,10 @@ export default function ChatThreadScreen(props: any) {
   const counterpartyName = route.params?.counterpartyName || "Chat";
   const counterpartyAvatar = route.params?.counterpartyAvatar || FALLBACK_AVATAR;
   const initialUserType = route.params?.currentUserType || "buyer";
+  // counterpartyType tells us whether the OTHER person is a farmer or buyer.
+  // If not provided, infer from currentUserType (farmer talks to buyer, buyer talks to farmer).
+  const counterpartyType: "farmer" | "buyer" =
+    route.params?.counterpartyType || (initialUserType === "farmer" ? "buyer" : "farmer");
   const tabBarOffset = Number(route.params?.tabBarHeight ?? 0);
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
@@ -82,7 +86,12 @@ export default function ChatThreadScreen(props: any) {
   const fetchMessages = useCallback(async () => {
     if (!currentUserId || !counterpartyId) return;
     try {
-      const res = await directMessageService.getMessagesBetweenUsers(currentUserId, counterpartyId);
+      const res = await directMessageService.getMessagesBetweenUsers(
+        currentUserId,
+        counterpartyId,
+        resolvedUserType as "farmer" | "buyer",
+        counterpartyType
+      );
       const list = extractMessageList(res);
       const normalized = list
         .map((msg: any) => ({
@@ -118,6 +127,12 @@ export default function ChatThreadScreen(props: any) {
     return () => clearTimeout(timeout);
   }, [messages.length]);
 
+  // Effective IDs with BUYER_ID_OFFSET applied for buyers.
+  const myEffectiveId =
+    resolvedUserType === "buyer" && currentUserId != null
+      ? currentUserId + BUYER_ID_OFFSET
+      : currentUserId;
+
   const handleSend = async () => {
     const trimmed = inputText.trim();
     if (!trimmed || !currentUserId || !counterpartyId || isSending) return;
@@ -126,8 +141,11 @@ export default function ChatThreadScreen(props: any) {
 
     const optimistic = {
       id: `local-${Date.now()}`,
-      intSenderId: currentUserId,
-      intReceiverId: counterpartyId,
+      intSenderId: myEffectiveId,
+      intReceiverId:
+        counterpartyType === "buyer"
+          ? counterpartyId + BUYER_ID_OFFSET
+          : counterpartyId,
       nvcharMessage: trimmed,
       dtMessageDate: new Date().toISOString(),
       optimistic: true,
@@ -140,6 +158,8 @@ export default function ChatThreadScreen(props: any) {
         senderId: currentUserId,
         receiverId: counterpartyId,
         message: trimmed,
+        senderType: resolvedUserType as "farmer" | "buyer",
+        receiverType: counterpartyType,
       });
       await fetchMessages();
     } catch (e) {
@@ -150,7 +170,7 @@ export default function ChatThreadScreen(props: any) {
   };
 
   const renderMessage = ({ item }: { item: any }) => {
-    const isMe = Number(item.intSenderId) === Number(currentUserId);
+    const isMe = Number(item.intSenderId) === Number(myEffectiveId);
     return (
       <View
         style={{

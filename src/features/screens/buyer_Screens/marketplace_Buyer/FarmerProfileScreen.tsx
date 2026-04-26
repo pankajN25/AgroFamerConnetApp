@@ -109,6 +109,7 @@ export default function FarmerProfileScreen() {
       counterpartyName: farmer?.nvcharFullName || `Farmer #${farmerId}`,
       counterpartyAvatar: profileImage,
       currentUserType: "buyer",
+      counterpartyType: "farmer",
     });
   };
 

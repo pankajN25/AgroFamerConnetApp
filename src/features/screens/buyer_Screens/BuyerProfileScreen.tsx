@@ -20,6 +20,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { parseStoredUser } from "@/src/utils/authSession";
 import { buyerAuthService } from "@/services/buyer/buyerAuthService";
+import { orderService } from "@/services/buyer/orderService";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface BuyerUser {
@@ -171,9 +172,18 @@ export default function BuyerProfileScreen() {
         }
         setBuyer(user as BuyerUser);
 
-        const localOrdersRaw = await AsyncStorage.getItem("@buyer_local_orders");
-        const localOrders = localOrdersRaw ? JSON.parse(localOrdersRaw) : [];
-        setOrderCount(Array.isArray(localOrders) ? localOrders.length : 0);
+        try {
+          const response = await orderService.getOrdersByBuyerId(user.id);
+          let orders: any[] = [];
+          if (Array.isArray(response)) orders = response;
+          else if (Array.isArray(response?.data)) orders = response.data;
+          else if (response?.status === "success" && Array.isArray(response?.data)) orders = response.data;
+          setOrderCount(orders.length);
+        } catch {
+          const localOrdersRaw = await AsyncStorage.getItem("@buyer_local_orders").catch(() => null);
+          const localOrders = localOrdersRaw ? JSON.parse(localOrdersRaw) : [];
+          setOrderCount(Array.isArray(localOrders) ? localOrders.length : 0);
+        }
 
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
       } catch (e) {

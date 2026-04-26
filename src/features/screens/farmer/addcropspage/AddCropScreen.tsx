@@ -524,11 +524,21 @@ export default function AddCropScreen() {
         const resolvedImage = cropService.resolveCropImageUrl(updatedCrop?.nvcharCropImageUrl);
 
         Alert.alert("Success", "Crop updated successfully.");
-        navigation.replace("CropDetails", {
-          crop: {
-            ...updatedCrop,
-            _resolvedImageUrl: resolvedImage ?? cropImageUri,
-          },
+        navigation.reset({
+          index: 2,
+          routes: [
+            { name: "FarmerTabsBase" },
+            { name: "MyCrops" },
+            {
+              name: "CropDetails",
+              params: {
+                crop: {
+                  ...updatedCrop,
+                  _resolvedImageUrl: resolvedImage ?? cropImageUri,
+                },
+              },
+            },
+          ],
         });
         return;
       }

@@ -272,7 +272,7 @@ export default function FarmerLoginScreen() {
         return;
       }
 
-      if (isBuyer && error.response?.status === 404) {
+      if (isBuyer && (error.response?.status === 404 || error.response?.status === 401)) {
         const localBuyer = await findLocalBuyerAccount(identifier, password);
 
         if (localBuyer?.id) {
@@ -286,10 +286,12 @@ export default function FarmerLoginScreen() {
         return;
       }
 
-      if (error.response && error.response.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 401) {
         Alert.alert("Login Failed", "Invalid credentials. Please try again.");
+      } else if (!error.response) {
+        Alert.alert("Connection Error", "Could not reach the server. Make sure the backend is running and your phone is on the same WiFi as your PC.");
       } else {
-        Alert.alert("Connection Error", "Could not connect to the server. Please check your network.");
+        Alert.alert("Login Failed", `Server error (${error.response.status}). Please try again.`);
       }
       console.log("Login Error details:", error);
     } finally {

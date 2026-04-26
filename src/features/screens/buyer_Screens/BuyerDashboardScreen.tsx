@@ -13,6 +13,7 @@ import { CommonActions, useIsFocused, useNavigation } from "@react-navigation/na
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buyerCropService } from "@/services/buyer/buyerCropService";
 import { buyerAuthService } from "@/services/buyer/buyerAuthService";
+import { orderService } from "@/services/buyer/orderService";
 import { parseStoredUser } from "@/src/utils/authSession";
 
 export default function BuyerDashboardScreen() {
@@ -21,6 +22,7 @@ export default function BuyerDashboardScreen() {
   const [buyerData, setBuyerData] = useState<any>(null);
   const [crops, setCrops] = useState<any[]>([]);
   const [isCropsLoading, setIsCropsLoading] = useState(true);
+  const [orderCount, setOrderCount] = useState<number>(0);
 
   useEffect(() => {
     const loadBuyerData = async () => {
@@ -31,6 +33,19 @@ export default function BuyerDashboardScreen() {
           return;
         }
         setBuyerData(user);
+
+        try {
+          const response = await orderService.getOrdersByBuyerId(user.id);
+          let orders: any[] = [];
+          if (Array.isArray(response)) orders = response;
+          else if (Array.isArray(response?.data)) orders = response.data;
+          else if (response?.status === "success" && Array.isArray(response?.data)) orders = response.data;
+          setOrderCount(orders.length);
+        } catch {
+          const raw = await AsyncStorage.getItem("@buyer_local_orders").catch(() => null);
+          const local = raw ? JSON.parse(raw) : [];
+          setOrderCount(Array.isArray(local) ? local.length : 0);
+        }
       } catch (e) {
         console.log("Error loading buyer session", e);
       }
@@ -167,7 +182,7 @@ export default function BuyerDashboardScreen() {
             style={{ backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#DBEAFE" }}
           >
             <MaterialCommunityIcons name="basket-outline" size={22} color="#3B82F6" />
-            <Text className="text-2xl font-extrabold text-[#1D4ED8] mt-1">0</Text>
+            <Text className="text-2xl font-extrabold text-[#1D4ED8] mt-1">{orderCount}</Text>
             <Text className="text-xs font-semibold text-[#6B7280] mt-0.5">Total Orders</Text>
           </View>
           <View

@@ -51,8 +51,7 @@ export const farmerOrderService = {
   },
 
   getCropsByFarmerId: async (farmerId: number) => {
-    const res = await api.get("/GettblCrop");
-    const all = extractList(res.data);
-    return all.filter((c: any) => Number(c.intFarmerId) === farmerId);
+    const res = await api.post("/GettblCropByFarmerId", { intFarmerId: farmerId });
+    return extractList(res.data);
   },
 };

@@ -20,6 +20,11 @@ const normalizeUrl = (value?: string | null) => {
     return "";
   }
 
+  // Local device file path — cannot be served from backend, skip it
+  if (/^file:\/\//i.test(trimmedValue) || /^\/data\//i.test(trimmedValue)) {
+    return "";
+  }
+
   if (/^https?:\/\//i.test(trimmedValue)) {
     try {
       const incoming = new URL(trimmedValue);

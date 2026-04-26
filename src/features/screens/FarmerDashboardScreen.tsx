@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, StatusBar
+  SafeAreaView, Image, StatusBar, Platform
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { CommonActions, useIsFocused, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
@@ -216,6 +216,13 @@ export default function FarmerDashboardScreen() {
     fetchWeather();
   }, [isFocused]);
 
+  const handleLogout = async () => {
+    await AsyncStorage.clear().catch(() => {});
+    navigation.dispatch(
+      CommonActions.reset({ index: 0, routes: [{ name: "SelectRole" }] })
+    );
+  };
+
   // navigation helpers
   const nav = (screen: string) => {
     const parent = navigation.getParent();
@@ -250,6 +257,21 @@ export default function FarmerDashboardScreen() {
               <Text style={{ fontSize: 17, color: "#111827", fontWeight: "800" }}>{firstName}</Text>
             </View>
           </View>
+          {Platform.OS === "web" && (
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                height: 36, paddingHorizontal: 14, backgroundColor: "#FEE2E2",
+                borderRadius: 18, alignItems: "center", justifyContent: "center",
+                marginRight: 8, flexDirection: "row",
+              }}
+            >
+              <MaterialCommunityIcons name="logout" size={16} color="#DC2626" />
+              <Text style={{ color: "#DC2626", fontWeight: "700", fontSize: 13, marginLeft: 4 }}>
+                Logout
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => nav("Notifications")}
             style={{ width: 44, height: 44, backgroundColor: "#fff", borderRadius: 22, alignItems: "center", justifyContent: "center", shadowColor: "#0F172A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4 }}
